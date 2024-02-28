@@ -3,6 +3,15 @@ import { useState } from "react";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
 import { Link } from "react-router-dom";
 import Oauth from "../components/Oauth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { db } from "../firebase";
+import { serverTimestamp } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,11 +21,38 @@ export default function SignUp() {
     password: "",
   });
   const { name, email, password } = formData;
+  const navigate = useNavigate();
   function onChange(event) {
     setFormData((prevState) => ({
       ...prevState,
       [event.target.id]: event.target.value,
     }));
+  }
+  async function onSubmit(e) {
+    e.preventDefault();
+
+    try {
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      updateProfile(auth.currentUser, {
+        displayName: name,
+      });
+      const user = userCredential.user;
+      const formDataCopy = { ...formData };
+      delete formDataCopy.password;
+      formDataCopy.timestamp = serverTimestamp();
+
+      await setDoc(doc(db, "users", user.uid), formDataCopy);
+      // toast.success("Sign up was successful");
+      // navigate("/");
+    } catch (error) {
+      toast.error("Something went wrong with the registration");
+    }
   }
   return (
     <section>
@@ -30,8 +66,8 @@ export default function SignUp() {
           />
         </div>
         <div className="w-full md:w-[67%] lg:w-[40%] lg:ml-20">
-          <form>
-          <input
+          <form onSubmit={onSubmit}>
+            <input
               type="text"
               id="name"
               value={name}
@@ -87,21 +123,20 @@ export default function SignUp() {
                 </Link>
               </p>
             </div>
-          
-          <button
-            className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800"
-            type="submit"
-          >
-            Sign in
-          </button>
-          <div className="flex items-center my-4 before:border-t before:flex-1  before:border-gray-300 after:border-t after:flex-1 after:border-gray-300">
-            <p className="text-center font-semibold mx-4">OR</p>
-          </div>
-          <Oauth />
+
+            <button
+              className="w-full bg-blue-600 text-white px-7 py-3 text-sm font-medium uppercase rounded shadow-md hover:bg-blue-700 transition duration-150 ease-in-out hover:shadow-lg active:bg-blue-800"
+              type="submit"
+            >
+              Sign in
+            </button>
+            <div className="flex items-center my-4 before:border-t before:flex-1  before:border-gray-300 after:border-t after:flex-1 after:border-gray-300">
+              <p className="text-center font-semibold mx-4">OR</p>
+            </div>
+            <Oauth />
           </form>
         </div>
       </div>
     </section>
   );
 }
-
